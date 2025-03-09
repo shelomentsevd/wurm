@@ -1,106 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wurm Online Log Viewer</title>
+  <meta charset="UTF-8">
+  <title>Wurm Online Log Visualizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
-    h1 {
-      font-size: 1.5em;
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 10px 20px;
     }
-    #chartContainer {
+    .screen {
+      flex: 1;
+      display: none;
+      overflow-y: auto;
+    }
+    /* Initially show the upload screen */
+    #uploadScreen {
+      display: block;
+      text-align: center;
+      padding-top: 100px;
+    }
+    .upload-container {
+      max-width: 500px;
+      margin: auto;
+      border: 2px dashed #aaa;
+      padding: 40px;
+      border-radius: 8px;
+    }
+    .upload-container h1 {
+      margin-top: 0;
+    }
+    .upload-container input[type="file"] {
       margin-top: 20px;
     }
+    /* Dashboard layout */
+    .container {
+      display: flex;
+      height: 100%;
+    }
+    .sidebar {
+      width: 250px;
+      background-color: #f4f4f4;
+      padding: 20px;
+      border-right: 1px solid #ddd;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      font-size: 1.1em;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
+    .sidebar select,
+    .sidebar input[type="date"],
+    .sidebar button {
+      width: 100%;
+      padding: 6px;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+    .sidebar label {
+      display: block;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+    .main {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .chart-container {
+      margin-bottom: 30px;
+    }
+    .chart-container h2 {
+      margin-top: 0;
+    }
+    footer {
+      text-align: center;
+      padding: 10px;
+      background: #eee;
+    }
   </style>
-  <!-- Include Chart.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Upload Your Wurm Online Log File</h1>
-  <input type="file" id="fileInput" accept=".txt" />
-  <div id="chartContainer">
-    <canvas id="myChart"></canvas>
+<header>
+  <h1>Wurm Online Log Visualizer</h1>
+</header>
+
+<!-- First Screen: Upload Landing Page -->
+<div id="uploadScreen" class="screen">
+  <div class="upload-container">
+    <h1>Welcome!</h1>
+    <p>Upload your Wurm Online log file to visualize your training progress.</p>
+    <input type="file" id="logFileInput" accept=".txt">
+    <p id="uploadMessage"></p>
   </div>
+</div>
 
-  <script>
-    document.getElementById('fileInput').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.split('\n');
-        let cumulativeFishing = 0;
-        let cumulativeMining = 0;
-        const labels = [];
-        const fishingData = [];
-        const miningData = [];
+<!-- Third Screen: Dashboard -->
+<div id="dashboardScreen" class="screen">
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h3>Select Session</h3>
+      <select id="sessionSelect">
+        <!-- Options will be populated after file processing -->
+      </select>
+      <h3>Date Filter</h3>
+      <label for="startDate">Start Date:</label>
+      <input type="date" id="startDate">
+      <label for="endDate">End Date:</label>
+      <input type="date" id="endDate">
+      <button id="applyDateFilter">Apply Date Filter</button>
+      <button id="showAllTime">Show All Time</button>
+    </div>
+    <!-- Main Dashboard Area -->
+    <div class="main">
+      <div class="chart-container">
+        <h2>Cumulative Progress Chart</h2>
+        <canvas id="cumulativeChart" width="600" height="300"></canvas>
+      </div>
+      <div class="chart-container">
+        <h2>Frequency of Training Events</h2>
+        <canvas id="frequencyChart" width="600" height="300"></canvas>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <small>© 2025 Wurm Online Log Visualizer | <a href="#">About</a> | <a href="#">Help</a></small>
+  </footer>
+</div>
 
-        // Process each line
-        lines.forEach((line, index) => {
-          // Use regex to count matches (case-insensitive)
-          const fishingMatches = line.match(/Woodcutting/gi) || [];
-          const miningMatches = line.match(/Carpentry/gi) || [];
+<script>
+  // Global variable to hold processed log data.
+  // The structure should be filled by processLogFile().
+  let logData = {
+    // Example structure:
+    // sessions: {
+    //   "2025-02-21": {
+    //     cumulativeLabels: [...],
+    //     cumulative: { Foraging: [...], Mining: [...], Carpentry: [...] },
+    //     frequency: { Foraging: number, Mining: number, Carpentry: number, ... }
+    //   },
+    //   "2025-02-22": { ... }
+    // }
+  };
 
-          cumulativeFishing += fishingMatches.length;
-          cumulativeMining += miningMatches.length;
-          
-          // X axis is the number of lines checked (starting at 1)
-          labels.push(index + 1);
-          fishingData.push(cumulativeFishing);
-          miningData.push(cumulativeMining);
-        });
+  // Chart instances
+  let cumulativeChart, frequencyChart;
 
-        // Create the line chart using Chart.js
-        const ctx = document.getElementById('myChart').getContext('2d');
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: 'Woodcutting',
-                data: fishingData,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                fill: false,
-              },
-              {
-                label: 'Carpentry',
-                data: miningData,
-                borderColor: 'rgba(192, 75, 75, 1)',
-                fill: false,
-              }
-            ]
-          },
-          options: {
-            scales: {
-              x: {
-                title: {
-                  display: true,
-                  text: 'Lines Checked'
-                }
-              },
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Cumulative Count'
-                }
-              }
-            }
-          }
-        });
-      };
+  // Schematic function to process the uploaded log file.
+  // In your full implementation, this function should parse the file and fill 'logData'.
+  function processLogFile(file) {
+    console.log("Processing file:", file.name);
+    // TODO: Add file parsing logic here.
+    // For now, assume we fill logData.sessions with parsed data.
+    // For example:
+    // logData.sessions = { "2025-02-21": { ... }, "2025-02-22": { ... } };
+    // You can also set default values for startDate and endDate based on your data.
+  }
 
-      // Read the file as text
-      reader.readAsText(file);
+  // Initialize charts with empty data placeholders.
+  function initCharts() {
+    const ctxCumulative = document.getElementById('cumulativeChart').getContext('2d');
+    cumulativeChart = new Chart(ctxCumulative, {
+      type: 'line',
+      data: {
+        labels: [], // to be filled from logData
+        datasets: [
+          { label: 'Foraging', data: [], borderColor: 'rgba(75, 192, 192, 1)', fill: false },
+          { label: 'Mining', data: [], borderColor: 'rgba(192, 75, 75, 1)', fill: false },
+          { label: 'Carpentry', data: [], borderColor: 'rgba(75, 75, 192, 1)', fill: false }
+        ]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Log Event Number' } },
+          y: { beginAtZero: true, title: { display: true, text: 'Cumulative Value' } }
+        }
+      }
     });
-  </script>
+
+    const ctxFrequency = document.getElementById('frequencyChart').getContext('2d');
+    frequencyChart = new Chart(ctxFrequency, {
+      type: 'bar',
+      data: {
+        labels: [], // to be filled from logData
+        datasets: [{
+          label: 'Event Count',
+          data: [],
+          backgroundColor: ['rgba(75, 192, 192, 0.6)','rgba(192, 75, 75, 0.6)','rgba(75, 75, 192, 0.6)','rgba(192, 192, 75, 0.6)','rgba(75, 192, 75, 0.6)'],
+          borderColor: ['rgba(75, 192, 192, 1)','rgba(192, 75, 75, 1)','rgba(75, 75, 192, 1)','rgba(192, 192, 75, 1)','rgba(75, 192, 75, 1)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Skills' } },
+          y: { beginAtZero: true, title: { display: true, text: 'Number of Events' } }
+        }
+      }
+    });
+  }
+
+  // Update charts for a given session using data from logData.
+  function updateCharts(session) {
+    if (!logData.sessions || !logData.sessions[session]) return;
+    const data = logData.sessions[session];
+    cumulativeChart.data.labels = data.cumulativeLabels;
+    cumulativeChart.data.datasets[0].data = data.cumulative.Foraging;
+    cumulativeChart.data.datasets[1].data = data.cumulative.Mining;
+    cumulativeChart.data.datasets[2].data = data.cumulative.Carpentry;
+    cumulativeChart.update();
+
+    frequencyChart.data.labels = Object.keys(data.frequency);
+    frequencyChart.data.datasets[0].data = Object.values(data.frequency);
+    frequencyChart.update();
+  }
+
+  // Populate the session dropdown based on the current logData.
+  function populateSessionDropdown(sessions) {
+    const sessionSelect = document.getElementById('sessionSelect');
+    sessionSelect.innerHTML = "";
+    sessions.forEach(session => {
+      const option = document.createElement("option");
+      option.value = session;
+      option.textContent = session;
+      sessionSelect.appendChild(option);
+    });
+    // Update charts with the first session, if available.
+    if (sessionSelect.options.length > 0) {
+      updateCharts(sessionSelect.options[0].value);
+    }
+  }
+
+  // Apply the date filter (schematic: filter sessions based on start and end dates)
+  function applyDateFilter() {
+    const startDate = new Date(document.getElementById('startDate').value);
+    const endDate = new Date(document.getElementById('endDate').value);
+    const sessions = [];
+    if (logData.sessions) {
+      Object.keys(logData.sessions).forEach(dateStr => {
+        const sessionDate = new Date(dateStr);
+        if (sessionDate >= startDate && sessionDate <= endDate) {
+          sessions.push(dateStr);
+        }
+      });
+    }
+    populateSessionDropdown(sessions);
+  }
+
+  // Show all sessions (i.e. ignore date filter)
+  function showAllTime() {
+    const sessions = logData.sessions ? Object.keys(logData.sessions) : [];
+    populateSessionDropdown(sessions);
+  }
+
+  // When a file is uploaded, trigger file processing.
+  document.getElementById('logFileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('uploadMessage').textContent = "Processing your file, please wait...";
+    // Simulate processing delay (replace with actual file processing later)
+    setTimeout(() => {
+      // Call our schematic file processing function.
+      processLogFile(file);
+      // (For now, you might simulate that logData is filled here.)
+      // logData.sessions = { ... }; // Populate with your parsed data.
+
+      // Hide upload screen and show dashboard.
+      document.getElementById('uploadScreen').style.display = 'none';
+      document.getElementById('dashboardScreen').style.display = 'block';
+      // Initialize charts.
+      initCharts();
+      // Populate session dropdown with all sessions.
+      showAllTime();
+    }, 2000);
+  });
+
+  // Event listeners for date filter and session select.
+  document.getElementById('applyDateFilter').addEventListener('click', applyDateFilter);
+  document.getElementById('showAllTime').addEventListener('click', showAllTime);
+  document.getElementById('sessionSelect').addEventListener('change', function() {
+    updateCharts(this.value);
+  });
+</script>
 </body>
 </html>
-
