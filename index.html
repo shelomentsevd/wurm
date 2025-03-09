@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wurm Online Log Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 1.5em;
+    }
+    #fileContent {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      white-space: pre-wrap;
+      background-color: #f9f9f9;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload Your Wurm Online Log File</h1>
+  <input type="file" id="fileInput" accept=".txt">
+  <div id="fileContent">File content will appear here...</div>
+  
+  <script>
+    // Listen for file selection
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        // Display the file content in the div
+        document.getElementById('fileContent').textContent = e.target.result;
+      };
+      // Read the file as text
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
+
