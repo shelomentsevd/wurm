@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wurm Online Log Viewer</title>
   <style>
     body {
@@ -12,33 +12,91 @@
     h1 {
       font-size: 1.5em;
     }
-    #fileContent {
+    #chartContainer {
       margin-top: 20px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      white-space: pre-wrap;
-      background-color: #f9f9f9;
-      max-height: 400px;
-      overflow-y: auto;
     }
   </style>
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <h1>Upload Your Wurm Online Log File</h1>
-  <input type="file" id="fileInput" accept=".txt">
-  <div id="fileContent">File content will appear here...</div>
-  
+  <input type="file" id="fileInput" accept=".txt" />
+  <div id="chartContainer">
+    <canvas id="myChart"></canvas>
+  </div>
+
   <script>
-    // Listen for file selection
     document.getElementById('fileInput').addEventListener('change', function(event) {
       const file = event.target.files[0];
       if (!file) return;
       
       const reader = new FileReader();
       reader.onload = function(e) {
-        // Display the file content in the div
-        document.getElementById('fileContent').textContent = e.target.result;
+        const text = e.target.result;
+        const lines = text.split('\n');
+        let cumulativeFishing = 0;
+        let cumulativeMining = 0;
+        const labels = [];
+        const fishingData = [];
+        const miningData = [];
+
+        // Process each line
+        lines.forEach((line, index) => {
+          // Use regex to count matches (case-insensitive)
+          const fishingMatches = line.match(/Woodcutting/gi) || [];
+          const miningMatches = line.match(/Carpentry/gi) || [];
+
+          cumulativeFishing += fishingMatches.length;
+          cumulativeMining += miningMatches.length;
+          
+          // X axis is the number of lines checked (starting at 1)
+          labels.push(index + 1);
+          fishingData.push(cumulativeFishing);
+          miningData.push(cumulativeMining);
+        });
+
+        // Create the line chart using Chart.js
+        const ctx = document.getElementById('myChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Woodcutting',
+                data: fishingData,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false,
+              },
+              {
+                label: 'Carpentry',
+                data: miningData,
+                borderColor: 'rgba(192, 75, 75, 1)',
+                fill: false,
+              }
+            ]
+          },
+          options: {
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Lines Checked'
+                }
+              },
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Cumulative Count'
+                }
+              }
+            }
+          }
+        });
       };
+
       // Read the file as text
       reader.readAsText(file);
     });
